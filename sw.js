@@ -6,8 +6,9 @@ const PRECACHE = ["/english-trainer-pwa/APPLICATION_RIGHTS.txt","/english-traine
 
 self.addEventListener('install', event => {
   // Atomic installation: no new worker activates with an incomplete app shell.
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(PRECACHE)));
-  // No skipWaiting: an update must not interrupt an active exercise or form.
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  // Activate only the complete shell. Existing pages keep their loaded bundle
+  // and React state; never navigate/reload an active exercise or form.
 });
 
 self.addEventListener('activate', event => {
