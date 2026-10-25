@@ -12,10 +12,14 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(
-    keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE)
+  event.waitUntil(caches.keys().then(keys => {
+    // Keep the previous complete shell for an HTML response already in flight.
+    const previous = keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE).slice(-1);
+    return Promise.all(
+    keys.filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE && !previous.includes(key))
       .map(key => caches.delete(key))
-  )).then(() => self.clients.claim()));
+    );
+  }).then(() => self.clients.claim()));
   // Cache Storage is independent of AsyncStorage/localStorage learning records.
 });
 
@@ -23,12 +27,20 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin || !url.pathname.startsWith(BASE_PATH)) return;
   const navigation = event.request.mode === 'navigate';
-  if (!navigation && !PRECACHE.includes(url.pathname)) return;
+  const immutableAsset = url.pathname.startsWith(BASE_PATH + '_expo/static/') || url.pathname.startsWith(BASE_PATH + 'assets/');
+  if (!navigation && !PRECACHE.includes(url.pathname) && !immutableAsset) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     // An installed worker serves one consistent HTML + hashed-asset revision.
     const cached = await cache.match(navigation ? BASE_PATH + 'index.html' : url.pathname);
     if (cached) return cached;
+    if (immutableAsset) {
+      const previous = (await caches.keys()).filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE).reverse();
+      for (const name of previous) {
+        const oldAsset = await (await caches.open(name)).match(url.pathname);
+        if (oldAsset) return oldAsset;
+      }
+    }
     try { return await fetch(event.request); }
     catch { return new Response('App resources unavailable. Reconnect and reload.', {
       status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' }
