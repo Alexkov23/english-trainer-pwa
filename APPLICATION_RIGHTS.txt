@@ -1,0 +1,8 @@
+APPLICATION RIGHTS NOTICE
+
+The recovered application-specific code and assets remain subject to the
+original owner's copyright and permissions. This reconstruction does not grant
+an open-source license or additional redistribution rights.
+
+Third-party dependencies retain their respective licenses. See
+THIRD_PARTY_NOTICES.md and licenses/ for the preserved notices and license texts.
